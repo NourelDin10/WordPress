@@ -1,4 +1,4 @@
-name: Upload to S3
+name: Upload to S3 and Deploy to ASG
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - master
   
 jobs:
-  upload:
+  deploy:
     runs-on: ubuntu-latest
     
     steps:
@@ -15,7 +15,7 @@ jobs:
         with:
           path: wordpress
 
-      - name: Create and upload archive
+      - name: Create and upload archive to S3
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -25,11 +25,44 @@ jobs:
           FILENAME="app_${DATE}.tar.gz"
           
           # Create tar from wordpress directory
+<<<<<<< HEAD
+          tar -czf "${FILENAME}" -C wordpress . 
+=======
           tar -czf "${FILENAME}" -C wordpress .
     
+>>>>>>> 3fa0b07dee3da1743156e51de277f8f4a8dd1082
           
           # Upload to S3
           aws s3 cp "${FILENAME}" "s3://${{ secrets.S3_BUCKET }}/${FILENAME}"
           
+<<<<<<< HEAD
+          # Export filename for next step
+          echo "FILENAME=${FILENAME}" >> $GITHUB_ENV
+
+      - name: Deploy to ASG via SSM
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          FILENAME: ${{ env.FILENAME }}
+        run: |
+          # Send SSM command to all instances with Role=app tag
+          aws ssm send-command \
+            --targets "Key=tag:Role,Values=app" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy WordPress update" \
+            --parameters 'commands=[
+              "yum install -y awscli rsync tar",
+              "aws s3 cp s3://'"${S3_BUCKET}"'/'"${FILENAME}"' /tmp/app.tar.gz",
+              "mkdir -p /tmp/app",
+              "tar -xzf /tmp/app.tar.gz -C /tmp/app",
+              "rsync -av --delete /tmp/app/ /var/www/html/",
+              "chown -R apache:apache /var/www/html/"
+            ]'
+
+=======
 
           echo "✅ Uploaded to s3://${{ secrets.S3_BUCKET }}/${FILENAME}"
+
+>>>>>>> 3fa0b07dee3da1743156e51de277f8f4a8dd1082
