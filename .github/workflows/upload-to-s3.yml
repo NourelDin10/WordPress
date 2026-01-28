@@ -48,10 +48,9 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --comment "Deploy WordPress update" \
             --parameters 'commands=[
-              "yum install -y awscli rsync tar",
-              "aws s3 cp s3://'"${S3_BUCKET}"'/'"${FILENAME}"' /tmp/app.tar.gz",
-              "mkdir -p /tmp/app",
-              "tar -xzf /tmp/app.tar.gz -C /tmp/app",
-              "rsync -av --delete /tmp/app/ /var/www/html/",
-              "chown -R apache:apache /var/www/html/"
+              "sudo aws s3 cp s3://'"${S3_BUCKET}"'/'"${FILENAME}"' /tmp/app.tar.gz",
+              "sudo mkdir -p /tmp/app",
+              "sudo tar -xzf /tmp/app.tar.gz -C /tmp/app",
+              "sudo rsync -av --delete /tmp/app/ /var/www/html/",
+              "sudo chown -R apache:apache /var/www/html/"
             ]'
