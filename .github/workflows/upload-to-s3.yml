@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - master
-  
+  workflow_dispatch:
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -25,17 +26,11 @@ jobs:
           FILENAME="app_${DATE}.tar.gz"
           
           # Create tar from wordpress directory
-<<<<<<< HEAD
           tar -czf "${FILENAME}" -C wordpress . 
-=======
-          tar -czf "${FILENAME}" -C wordpress .
-    
->>>>>>> 3fa0b07dee3da1743156e51de277f8f4a8dd1082
           
           # Upload to S3
           aws s3 cp "${FILENAME}" "s3://${{ secrets.S3_BUCKET }}/${FILENAME}"
           
-<<<<<<< HEAD
           # Export filename for next step
           echo "FILENAME=${FILENAME}" >> $GITHUB_ENV
 
@@ -60,9 +55,3 @@ jobs:
               "rsync -av --delete /tmp/app/ /var/www/html/",
               "chown -R apache:apache /var/www/html/"
             ]'
-
-=======
-
-          echo "✅ Uploaded to s3://${{ secrets.S3_BUCKET }}/${FILENAME}"
-
->>>>>>> 3fa0b07dee3da1743156e51de277f8f4a8dd1082
