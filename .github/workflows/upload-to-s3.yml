@@ -22,7 +22,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          DATE=$(date +%Y-%m-%d_%H:%M:%S)
+          DATE=$(date +%Y-%m-%d_%H-%M-%S)
           FILENAME="app_${DATE}.tar.gz"
           
           # Create tar from wordpress directory
