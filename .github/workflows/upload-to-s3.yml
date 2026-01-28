@@ -1,0 +1,28 @@
+name: Upload to S3
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download code
+        uses: actions/checkout@v4
+
+      - name: Create tar file
+        run: |
+          DATE=$(date +%Y%m%d_%H%M%S)
+          tar -czf "app_${DATE}.tar.gz" .
+          echo "FILENAME=app_${DATE}.tar.gz" >> $GITHUB_ENV
+
+      - name: Upload to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          aws s3 cp "$FILENAME" "s3://${{ secrets.S3_BUCKET }}/$FILENAME"
