@@ -4,36 +4,34 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
 
 jobs:
   upload:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Download code
+      - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          path: wordpress
 
-      - name: Create tar file
-        run: |
-          DATE=$(date +%Y%m%d_%H%M%S)
-          FILENAME="app_${DATE}.tar.gz"
-          
-          tar -czf "$FILENAME" \
-            --exclude="*.tar.gz" \
-            --exclude=".git" \
-            --exclude=".github" \
-            .
-          
-          echo "FILENAME=$FILENAME" >> $GITHUB_ENV
-          
-          echo "Created: $FILENAME"
-          ls -lh "$FILENAME"
-
-      - name: Upload to S3
+      - name: Create and upload archive
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          aws s3 cp "$FILENAME" "s3://${{ secrets.S3_BUCKET }}/$FILENAME"
-          echo " Uploaded to s3://${{ secrets.S3_BUCKET }}/$FILENAME"
+          DATE=$(date +%Y%m%d_%H%M%S)
+          FILENAME="app_${DATE}.tar.gz"
+          
+          # Create tar from wordpress directory
+          tar -czf "${FILENAME}" -C wordpress .
+          
+          echo "Created: ${FILENAME}"
+          ls -lh "${FILENAME}"
+          
+          # Upload to S3
+          aws s3 cp "${FILENAME}" "s3://${{ secrets.S3_BUCKET }}/${FILENAME}"
+          
+          echo "✅ Uploaded to s3://${{ secrets.S3_BUCKET }}/${FILENAME}"
