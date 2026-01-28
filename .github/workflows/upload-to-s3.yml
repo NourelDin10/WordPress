@@ -16,8 +16,18 @@ jobs:
       - name: Create tar file
         run: |
           DATE=$(date +%Y%m%d_%H%M%S)
-          tar -czf "app_${DATE}.tar.gz" .
-          echo "FILENAME=app_${DATE}.tar.gz" >> $GITHUB_ENV
+          FILENAME="app_${DATE}.tar.gz"
+          
+          tar -czf "$FILENAME" \
+            --exclude="*.tar.gz" \
+            --exclude=".git" \
+            --exclude=".github" \
+            .
+          
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+          
+          echo "Created: $FILENAME"
+          ls -lh "$FILENAME"
 
       - name: Upload to S3
         env:
@@ -26,3 +36,4 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
           aws s3 cp "$FILENAME" "s3://${{ secrets.S3_BUCKET }}/$FILENAME"
+          echo " Uploaded to s3://${{ secrets.S3_BUCKET }}/$FILENAME"
