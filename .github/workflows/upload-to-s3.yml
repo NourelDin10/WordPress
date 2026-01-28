@@ -54,7 +54,7 @@ jobs:
           # Convert space-separated IDs to comma-separated for SSM
           INSTANCE_IDS_CSV=$(echo "$INSTANCE_IDS" | tr '[:space:]' ',' | sed 's/,$//')
 
-          echo "Deploying to instances: $INSTANCE_IDS_CSV"
+          echo "Deplooying to instances: $INSTANCE_IDS_CSV"
 
           # Send SSM command to all instances
           aws ssm send-command \
