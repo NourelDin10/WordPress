@@ -51,16 +51,18 @@ jobs:
             --query 'AutoScalingGroups[0].Instances[*].InstanceId' \
             --output text)
 
-          echo "Deploying to instances: $INSTANCE_IDS"
+          # Convert space-separated IDs to comma-separated for SSM
+          INSTANCE_IDS_CSV=$(echo "$INSTANCE_IDS" | tr '[:space:]' ',' | sed 's/,$//')
+
+          echo "Deploying to instances: $INSTANCE_IDS_CSV"
 
           # Send SSM command to all instances
           aws ssm send-command \
-            --targets "Key=InstanceIds,Values=$INSTANCE_IDS" \
+            --targets "Key=InstanceIds,Values=$INSTANCE_IDS_CSV" \
             --document-name "AWS-RunShellScript" \
             --comment "Deploy WordPress update" \
             --parameters 'commands=[
-              "yum install -y awscli rsync tar",
-              "aws s3 cp s3://'${{ secrets.S3_BUCKET }}'/'${FILE}' /tmp/app.tar.gz",
+              "aws s3 cp s3://'"$S3_BUCKET"'/'"$FILENAME"' /tmp/app.tar.gz",
               "mkdir -p /tmp/app",
               "tar -xzf /tmp/app.tar.gz -C /tmp/app",
               "rsync -av --delete /tmp/app/ /var/www/html/",
