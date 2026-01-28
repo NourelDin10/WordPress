@@ -45,7 +45,7 @@ jobs:
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
           FILENAME: ${{ env.FILENAME }}
         run: |
-          echo "Sending SSM command to deploy build..."
+          echo "Sending SSM command to deploy build...."
           
           aws ssm send-command \
             --targets "Key=tag:Role,Values=app" \
