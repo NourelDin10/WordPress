@@ -45,10 +45,24 @@ jobs:
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
           FILENAME: ${{ env.FILENAME }}
         run: |
-          echo "Sending SSM command to deploy build...."
-          
+          # Get all instance IDs in the ASG
+          INSTANCE_IDS=$(aws autoscaling describe-auto-scaling-groups \
+            --auto-scaling-group-names "${{ secrets.ASG_NAME }}" \
+            --query 'AutoScalingGroups[0].Instances[*].InstanceId' \
+            --output text)
+
+          echo "Deploying to instances: $INSTANCE_IDS"
+
+          # Send SSM command to all instances
           aws ssm send-command \
-            --targets "Key=tag:Role,Values=app" \
+            --targets "Key=InstanceIds,Values=$INSTANCE_IDS" \
             --document-name "AWS-RunShellScript" \
             --comment "Deploy WordPress update" \
-            --parameters '{"commands":["sudo yum install -y awscli rsync tar","sudo aws s3 cp s3://'"${S3_BUCKET}"'/'"${FILENAME}"' /tmp/app.tar.gz","sudo mkdir -p /tmp/app","sudo tar -xzf /tmp/app.tar.gz -C /tmp/app","sudo rsync -av --delete /tmp/app/ /var/www/html/","sudo chown -R apache:apache /var/www/html/","echo Deployment complete, listing /var/www/html:","ls -l /var/www/html"]}'
+            --parameters 'commands=[
+              "yum install -y awscli rsync tar",
+              "aws s3 cp s3://'${{ secrets.S3_BUCKET }}'/'${FILE}' /tmp/app.tar.gz",
+              "mkdir -p /tmp/app",
+              "tar -xzf /tmp/app.tar.gz -C /tmp/app",
+              "rsync -av --delete /tmp/app/ /var/www/html/",
+              "chown -R apache:apache /var/www/html/"
+            ]'
