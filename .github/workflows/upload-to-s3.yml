@@ -8,6 +8,7 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+      # 1️⃣ Checkout code
 
     steps:
       - name: Checkout code
