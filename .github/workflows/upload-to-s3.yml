@@ -1,70 +1,36 @@
-name: Upload to S3 and Deploy to ASG
+name: Upload Docker image to ECR
 
 on:
   push:
     branches:
       - master
-  workflow_dispatch:
 
 jobs:
-  deploy:
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout code
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          path: wordpress
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
-      # 2️⃣ Create tar.gz and upload to S3
-      - name: Create and upload archive to S3
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
+      - name: Build Docker image
         run: |
-          DATE=$(date +%Y-%m-%d_%H-%M-%S)
-          FILENAME="app_${DATE}.tar.gz"
+          docker build -t wordpress-app .
 
-          echo "Creating archive: $FILENAME"
-          tar -czf "${FILENAME}" -C wordpress .
-
-          echo "Uploading to S3..."
-          aws s3 cp "${FILENAME}" "s3://${{ secrets.S3_BUCKET }}/${FILENAME}"
-
-          # Export filename for next step
-          echo "FILENAME=${FILENAME}" >> $GITHUB_ENV
-
-      # 3️⃣ Deploy to ASG via SSM
-      - name: Deploy to ASG via SSM
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          S3_BUCKET: ${{ secrets.S3_BUCKET }}
-          FILENAME: ${{ env.FILENAME }}
+      - name: Tag Docker image
         run: |
-          # Get all instance IDs in the ASG
-          INSTANCE_IDS=$(aws autoscaling describe-auto-scaling-groups \
-            --auto-scaling-group-names "${{ secrets.ASG_NAME }}" \
-            --query 'AutoScalingGroups[0].Instances[*].InstanceId' \
-            --output text)
+          docker tag wordpress-app:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
 
-          # Convert space-separated IDs to comma-separated for SSM
-          INSTANCE_IDS_CSV=$(echo "$INSTANCE_IDS" | tr '[:space:]' ',' | sed 's/,$//')
-
-          echo "Deplooying to instances: $INSTANCE_IDS_CSV"
-
-          # Send SSM command to all instances
-          aws ssm send-command \
-            --targets "Key=InstanceIds,Values=$INSTANCE_IDS_CSV" \
-            --document-name "AWS-RunShellScript" \
-            --comment "Deploy WordPress update" \
-            --parameters 'commands=[
-              "aws s3 cp s3://'"$S3_BUCKET"'/'"$FILENAME"' /tmp/app.tar.gz",
-              "mkdir -p /tmp/app",
-              "tar -xzf /tmp/app.tar.gz -C /tmp/app",
-              "rsync -av --delete /tmp/app/ /var/www/html/",
-              "chown -R apache:apache /var/www/html/"
-            ]'
+      - name: Push image to Amazon ECR
+        run: |
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
